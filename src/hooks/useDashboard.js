@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import api from '../services/api';
 
 export const useDashboard = () => {
   const [missionsReport, setMissionsReport] = useState([]);
@@ -8,17 +9,20 @@ export const useDashboard = () => {
   const [alerts, setAlerts] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const fetchDriverActivity = useCallback(async () => {
+    try {
+      const res = await api.get('/dashboard/driver-activity');
+      setDriverActivity(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setDriverActivity([]);
+    }
+  }, []);
+
   const fetchMissionsReport = useCallback(async (params) => {
     setLoading(true);
     try {
-      const query = params ? '?' + new URLSearchParams(params).toString() : '';
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/dashboard/missions-report${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setMissionsReport(Array.isArray(data) ? data : data?.content || []);
+      const res = await api.get('/dashboard/stats', { params });
+      setMissionsReport(res.data ? [res.data] : []);
     } catch {
       setMissionsReport([]);
     } finally {
@@ -26,29 +30,10 @@ export const useDashboard = () => {
     }
   }, []);
 
-  const fetchDriverActivity = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/dashboard/driver-activity', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setDriverActivity(Array.isArray(data) ? data : data?.content || []);
-    } catch {
-      setDriverActivity([]);
-    }
-  }, []);
-
   const fetchFuelReport = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/dashboard/fuel-report', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setFuelReport(data);
+      const res = await api.get('/dashboard/stats');
+      setFuelReport(res.data);
     } catch {
       setFuelReport(null);
     }
@@ -56,13 +41,8 @@ export const useDashboard = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/dashboard/stats', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setStats(data);
+      const res = await api.get('/dashboard/stats');
+      setStats(res.data);
     } catch {
       setStats(null);
     }
@@ -70,13 +50,8 @@ export const useDashboard = () => {
 
   const fetchAlerts = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/dashboard/alerts', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setAlerts(data);
+      const res = await api.get('/dashboard/stats');
+      setAlerts(res.data);
     } catch {
       setAlerts(null);
     }

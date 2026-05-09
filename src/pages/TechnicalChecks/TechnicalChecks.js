@@ -2,73 +2,72 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import PageLayout from '../../components/layout/PageLayout';
 import { useToast } from '../../contexts/ToastContext';
-import { AddButton, SaveButton, CancelButton, EditButton, DeleteButton } from '../../components/common/Button';
-import { Modal } from '../../components/common/Modal';
-import { FormInput } from '../../components/common/FormInput';
+import { AddButton, EditButton, DeleteButton } from '../../components/common/Button';
 import { ConfirmModal } from '../../components/common/ConfirmModal';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { DataTable } from '../../components/common/DataTable';
 import { canEdit } from '../../utils/roles';
 import { TechnicalCheckModal } from '../../components/common/TechnicalCheckModal';
 import { useConfirm } from '../../hooks/useConfirm';
+import './TechnicalChecks.css';
+
+const FILTER_TABS = ['All', 'VALID', 'EXPIRED', 'FAILED', 'Expiring Soon'];
+
+const daysUntilExpiry = (expiryDate) => {
+  if (!expiryDate) return null;
+  return Math.ceil((new Date(expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+};
 
 function TechnicalChecks() {
-  const [checks, setChecks] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
+  const [checks, setChecks]           = useState([]);
+  const [vehicles, setVehicles]       = useState([]);
   const [expiringSoon, setExpiringSoon] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editCheck, setEditCheck] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ vehicleId: '', checkDate: '', expiryDate: '', result: 'PASS', notes: '' });
-  
-  // ✅ Only use useConfirm - remove confirmModal state
+  const [showForm, setShowForm]       = useState(false);
+  const [editCheck, setEditCheck]     = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [filter, setFilter]           = useState('All');
+  const [search, setSearch]           = useState('');
+
   const { confirmState, showConfirm, hideConfirm } = useConfirm();
   const { addToast } = useToast();
 
-  useEffect(() => { fetchChecks(); fetchVehicles(); fetchExpiringSoon(); }, []);
+  useEffect(() => {
+    fetchChecks();
+    fetchVehicles();
+    fetchExpiringSoon();
+  }, []);
 
   const fetchChecks = async () => {
     setLoading(true);
-    try { const res = await api.get('/technical-checks'); setChecks(res.data); }
-    catch (err) { addToast('Error fetching technical checks', 'error'); }
-    finally { setLoading(false); }
+    try {
+      const res = await api.get('/technical-checks');
+      setChecks(res.data);
+    } catch {
+      addToast('Error fetching technical checks', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchVehicles = async () => {
-    try { const res = await api.get('/vehicles'); setVehicles(res.data); }
-    catch (err) { console.error(err); }
+    try {
+      const res = await api.get('/vehicles');
+      setVehicles(res.data);
+    } catch (err) { console.error(err); }
   };
 
   const fetchExpiringSoon = async () => {
-    try { const res = await api.get('/technical-checks/expiring-soon'); setExpiringSoon(res.data); }
-    catch (err) { console.error(err); }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
     try {
-      const data = { ...form, vehicle: { id: parseInt(form.vehicleId) } };
-      if (editCheck) {
-        await api.put(`/technical-checks/${editCheck.id}`, data);
-        //addToast('✅ Technical check updated', 'success');
-      } else {
-        await api.post('/technical-checks', data);
-        //addToast('✅ Technical check created', 'success');
-      }
-      setShowForm(false); setEditCheck(null); setForm({ vehicleId: '', checkDate: '', expiryDate: '', result: 'PASS', notes: '' });
-      fetchChecks(); fetchExpiringSoon();
-    } catch (err) { 
-      //addToast('❌ Error saving technical check!', 'error');
-     }
+      const res = await api.get('/technical-checks/expiring-soon');
+      setExpiringSoon(res.data);
+    } catch (err) { console.error(err); }
   };
 
   const handleEdit = (check) => {
     setEditCheck(check);
-    setForm({ vehicleId: check.vehicle?.id || '', checkDate: check.checkDate || '', expiryDate: check.expiryDate || '', result: check.result || 'PASS', notes: check.notes || '' });
     setShowForm(true);
   };
 
-  // ✅ Use showConfirm for delete
   const handleDelete = (id, plateNumber) => {
     showConfirm(
       'Delete Technical Check',
@@ -77,68 +76,207 @@ function TechnicalChecks() {
         await api.delete(`/technical-checks/${id}`);
         await fetchChecks();
         await fetchExpiringSoon();
-        //addToast(`✅ Technical check for ${plateNumber} deleted`, 'success');
       },
       'danger'
     );
   };
 
-  const vehicleOptions = [{ value: '', label: 'Select Vehicle' }, ...vehicles.map(v => ({ value: v.id, label: v.plateNumber }))];
+  // ── Stats ──────────────────────────────────────────────
+  const total        = checks.length;
+  const validCount   = checks.filter(c => c.status === 'VALID').length;
+  const expiredCount = checks.filter(c => c.status === 'EXPIRED').length;
+  const failedCount  = checks.filter(c => c.status === 'FAILED').length;
+  const soonCount    = checks.filter(c => {
+    const d = daysUntilExpiry(c.expiryDate);
+    return c.status === 'VALID' && d !== null && d >= 0 && d <= 15;
+  }).length;
 
-  const columns = [
-    { key: 'id', label: 'ID' },
-    { key: 'vehicle', label: 'Vehicle', render: (value) => value?.plateNumber || '—' },
-    { key: 'checkDate', label: 'Check Date' },
-    { key: 'expiryDate', label: 'Expiry Date' },
-    { key: 'result', label: 'Result', render: (value) => (
-      <span className={`mission-badge badge-${value?.toLowerCase()}`}>{value}</span>
-    )},
-    { key: 'notes', label: 'Notes', render: (value) => value || '—' },
-    { 
-      key: 'actions', 
-      label: 'Actions', 
-      render: (_, row) => !canEdit() ? <span style={{color:'#888'}}>—</span> : (
-        <div style={{ display: 'flex', gap: '4px' }}>
-          <EditButton onClick={() => handleEdit(row)} />
-          {/* ✅ Fixed DeleteButton */}
-          <DeleteButton 
-            onClick={() => handleDelete(row.id, row.vehicle?.plateNumber)} 
-            itemName={`technical check for ${row.vehicle?.plateNumber}`}
-          />
-        </div>
-      )
+  // ── Filtering ──────────────────────────────────────────
+  const filtered = checks.filter(c => {
+    const term = search.toLowerCase();
+    const matchSearch =
+      !term ||
+      c.vehicle?.plateNumber?.toLowerCase().includes(term) ||
+      c.center?.toLowerCase().includes(term) ||
+      c.status?.toLowerCase().includes(term) ||
+      c.notes?.toLowerCase().includes(term);
+
+    if (!matchSearch) return false;
+    if (filter === 'All') return true;
+    if (filter === 'Expiring Soon') {
+      const d = daysUntilExpiry(c.expiryDate);
+      return c.status === 'VALID' && d !== null && d >= 0 && d <= 15;
     }
-  ];
+    return c.status === filter;
+  });
 
-  const tableData = checks;
+  // ── Columns ────────────────────────────────────────────
+  const columns = [
+    {
+      key: 'id',
+      label: 'ID',
+      render: (value, row) => (
+        <div>
+          <span className="mission-id">#{value}</span>
+          {row.checkDate && (
+            <div className="mission-timestamp">
+              {new Date(row.checkDate).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'vehicle',
+      label: 'Vehicle',
+      render: (value) => (
+        <div>
+          <span className="tc-plate">{value?.plateNumber || '—'}</span>
+          {value?.model && <div className="mission-timestamp">{value.model}</div>}
+        </div>
+      ),
+    },
+    { key: 'checkDate',  label: 'Check Date',  render: (v) => v ? new Date(v).toLocaleDateString('en-GB') : '—' },
+    { key: 'expiryDate', label: 'Expiry Date', render: (v) => v ? new Date(v).toLocaleDateString('en-GB') : '—' },
+    {
+      key: 'expiryDate',
+      label: 'Days Left',
+      render: (v) => {
+        const d = daysUntilExpiry(v);
+        if (d === null) return '—';
+        if (d < 0)      return <span className="tc-days tc-days--overdue">{Math.abs(d)}d ago</span>;
+        if (d <= 15)    return <span className="tc-days tc-days--soon">{d}d</span>;
+        return <span className="tc-days tc-days--ok">{d}d</span>;
+      },
+    },
+    {
+      key: 'center',
+      label: 'Center',
+      render: (v) => v || '—',
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (value) => {
+        const map = {
+          VALID:   'badge-valid',
+          EXPIRED: 'badge-expired',
+          FAILED:  'badge-fail',
+        };
+        return (
+          <span className={`mission-badge ${map[value] || 'badge-pending'}`}>
+            {value || '—'}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'notes',
+      label: 'Notes',
+      render: (v) => v || '—',
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (_, row) =>
+        !canEdit() ? (
+          <span style={{ color: '#888' }}>—</span>
+        ) : (
+          <div style={{ display: 'flex', gap: 4 }}>
+            <EditButton onClick={() => handleEdit(row)} />
+            <DeleteButton
+              onClick={() => handleDelete(row.id, row.vehicle?.plateNumber)}
+              itemName={`check for ${row.vehicle?.plateNumber}`}
+            />
+          </div>
+        ),
+    },
+  ];
 
   return (
     <PageLayout>
+      {/* Header */}
       <div className="content-header">
         <h2>Technical Checks</h2>
-        {canEdit() && <AddButton onClick={() => { setEditCheck(null); setForm({ vehicleId: '', checkDate: '', expiryDate: '', result: 'PASS', notes: '' }); setShowForm(true); }}>+ Add Check</AddButton>}
+        {canEdit() && (
+          <AddButton
+            onClick={() => { setEditCheck(null); setShowForm(true); }}
+          >
+            + New Check
+          </AddButton>
+        )}
       </div>
 
-      {expiringSoon.length > 0 && (
-        <div style={{ background: 'rgba(220,53,69,0.2)', border: '1px solid #dc3545', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px' }}>
-          <strong style={{ color: '#dc3545' }}><i className="fas fa-exclamation-triangle"></i> Expiring Soon:</strong>
-          <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', color: 'white' }}>
-            {expiringSoon.map(c => (
-              <li key={c.id}>{c.vehicle?.plateNumber} — expires {new Date(c.expiryDate).toLocaleDateString()}</li>
-            ))}
-          </ul>
+      <div className="content-body">
+
+        {/* ── Stat Cards ── */}
+        <div className="tc-stats-row">
+          {[
+            { label: 'TOTAL CHECKS',   value: total,        cls: 'tc-stat--blue'   },
+            { label: 'VALID',          value: validCount,   cls: 'tc-stat--green'  },
+            { label: 'EXPIRING SOON',  value: soonCount,    cls: 'tc-stat--gold'   },
+            { label: 'EXPIRED',        value: expiredCount, cls: 'tc-stat--red'    },
+          ].map(s => (
+            <div key={s.label} className={`tc-stat-card ${s.cls}`}>
+              <div className="tc-stat-label">{s.label}</div>
+              <div className="tc-stat-value">{s.value}</div>
+            </div>
+          ))}
         </div>
-      )}
 
-      {loading ? <LoadingSpinner /> : (
-        <DataTable 
-          columns={columns} 
-          data={tableData}
-          emptyMessage="No checks found"
-        />
-      )}
+        {/* ── Expiring-Soon Banner ── */}
+        {expiringSoon.length > 0 && (
+          <div className="tc-expiry-banner">
+            <span className="tc-expiry-icon">⚠</span>
+            <strong>Expiring Soon:</strong>
+            <span className="tc-expiry-list">
+              {expiringSoon.map((c, i) => (
+                <span key={c.id} className="tc-expiry-item">
+                  {c.vehicle?.plateNumber} — {new Date(c.expiryDate).toLocaleDateString('en-GB')}
+                  {i < expiringSoon.length - 1 && ',  '}
+                </span>
+              ))}
+            </span>
+          </div>
+        )}
 
-      {/* ✅ Only ONE ConfirmModal - using confirmState */}
+        {/* ── Filter Tabs + Search ── */}
+        <div className="filters">
+          {FILTER_TABS.map(tab => (
+            <button
+              key={tab}
+              className={`filter-btn ${filter === tab ? 'active-filter' : ''}`}
+              onClick={() => setFilter(tab)}
+            >
+              {tab === 'Expiring Soon' ? 'EXPIRING SOON' : tab.toUpperCase()}
+            </button>
+          ))}
+          <input
+            className="search-input"
+            placeholder="Search by vehicle, center…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+
+        {/* ── Table ── */}
+        {loading ? (
+          <LoadingSpinner />
+        ) : (
+          <>
+            <DataTable
+              columns={columns}
+              data={filtered}
+              emptyMessage="No technical checks found."
+            />
+            <div className="tc-footer">
+              Showing {filtered.length} of {checks.length} checks
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Modals */}
       <ConfirmModal
         isOpen={confirmState.isOpen}
         onClose={hideConfirm}
