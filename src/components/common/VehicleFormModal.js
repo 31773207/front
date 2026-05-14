@@ -16,7 +16,8 @@ export function VehicleFormModal({ isOpen, onClose, onSave, initialData, fuelOpt
     fuelType: '',
     brandName: '',
     vehicleTypeId: '',
-    technicalCheckExpiry: ''   // ← NEW
+    technicalCheckExpiry: '',   // ← NEW
+    inspectionCenter: ''        // ← NEW FIELD (fixed missing comma)
   });
 
   useEffect(() => {
@@ -30,7 +31,8 @@ export function VehicleFormModal({ isOpen, onClose, onSave, initialData, fuelOpt
         fuelType:              initialData.fuelType             || '',
         brandName:             initialData.brand?.brandName     || '',
         vehicleTypeId:         initialData.vehicleType?.id      || '',
-        technicalCheckExpiry:  initialData.technicalCheckExpiry || ''  // ← NEW
+        technicalCheckExpiry:  initialData.technicalCheckExpiry || '',  // ← NEW
+        inspectionCenter:      initialData.inspectionCenter     || ''   // ← NEW (fixed missing comma)
       });
     } else {
       resetForm();
@@ -47,7 +49,8 @@ export function VehicleFormModal({ isOpen, onClose, onSave, initialData, fuelOpt
       fuelType: '',
       brandName: '',
       vehicleTypeId: '',
-      technicalCheckExpiry: ''   // ← NEW
+      technicalCheckExpiry: '',   // ← NEW
+      inspectionCenter: ''        // ← NEW
     });
   };
 
@@ -71,13 +74,25 @@ export function VehicleFormModal({ isOpen, onClose, onSave, initialData, fuelOpt
           <FormInput label="Fuel Type"     value={form.fuelType}      onChange={(v) => setForm({ ...form, fuelType: v })}      required options={fuelOptions} />
           <FormInput label="Vehicle Type"  value={form.vehicleTypeId} onChange={(v) => setForm({ ...form, vehicleTypeId: v })} required options={typeOptions} />
 
-          {/* ── NEW: CT expiry date — full width ── */}
+          {/* CT expiry date - full width */}
           <div style={{ gridColumn: '1 / -1' }}>
             <FormInput
               label="Technical Check Expiry Date (CT Paper)"
               type="date"
               value={form.technicalCheckExpiry}
               onChange={(v) => setForm({ ...form, technicalCheckExpiry: v })}
+            />
+          </div>
+
+          {/* Inspection Center - full width */}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <FormInput
+              label="Inspection Center"
+              type="text"
+              value={form.inspectionCenter}
+              onChange={(v) => setForm({ ...form, inspectionCenter: v })}
+              placeholder="e.g., ETUSA Oued Smar, Sarl C.T.A, Centre de Blida..."
+              required={false}
             />
           </div>
         </div>

@@ -76,7 +76,7 @@ export function GasCouponModal({ isOpen, onClose, onSuccess }) {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Buy Coupons" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Add Coupons" size="md">
       <form onSubmit={handleSubmit}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <FormInput

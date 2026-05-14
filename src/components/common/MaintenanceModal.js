@@ -51,7 +51,7 @@ export function MaintenanceModal({ isOpen, onClose, onSuccess, vehicle, initialD
 
   const vehicleOptions = vehicles.map(v => ({ 
     value: v.id, 
-    label: `${v.plateNumber} - ${v.model}` 
+    label: `${v.plateNumber} - ${v.model} - ${v.brand}` 
   }));
 
   const validate = () => {

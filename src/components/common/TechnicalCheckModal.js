@@ -119,7 +119,7 @@ export function TechnicalCheckModal({ isOpen, onClose, onSuccess, initialData, v
           />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-            <label style={{ fontSize: '10px', fontWeight: '700', color: '#FFD700' }}>Notes</label>
+            <label style={{ fontSize: '20px', fontWeight: '700', color: '#ffffff' }}>Notes</label>
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -128,7 +128,7 @@ export function TechnicalCheckModal({ isOpen, onClose, onSuccess, initialData, v
                 padding: '10px 12px',
                 border: '1px solid rgba(255,255,255,0.15)',
                 borderRadius: '6px',
-                fontSize: '14px',
+                fontSize: '20px',
                 color: 'white',
                 background: 'rgba(255,255,255,0.06)',
                 width: '100%',
