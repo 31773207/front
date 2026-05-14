@@ -126,7 +126,13 @@ useEffect(() => {
 
   const columns = [
     { key: "id", label: "ID", width: "55px" },
-    { key: "vehicle", label: "Vehicle", render: (v) => <strong style={{ color: "#7facf9" }}>{v?.plateNumber || "—"}</strong> },
+{ key: "vehicle", label: "Vehicle", render: (v) => (
+   <>
+    <strong style={{ color: "#7facf9" }}>{v?.plateNumber || "—"}</strong>
+    {v?.model && <div className="mission-timestamp"> {v.model}</div>}
+    {v?.brand?.brandName && <div className="mission-timestamp">{v.brand.brandName}</div>}
+  </>
+) },
     { key: "maintenanceType", label: "Type" },
     { key: "startDate", label: "Start" },
     { key: "endDate", label: "End", render: (v) => v || <span style={{ color: "rgba(255,255,255,0.3)" }}>Ongoing</span> },
